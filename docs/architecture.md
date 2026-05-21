@@ -1,7 +1,7 @@
 ## Infrastructure Overview
 
-- **Vercel:** Hosts Next.js client (root directory `/frontend`). Connects to FastAPI backend via REST.
-- **Railway:** Hosts FastAPI Docker container. Runs web server and daily cron jobs.
+- **Vercel:** Hosts Next.js client (root directory `/frontend`). Active deployment. Connects to FastAPI backend via REST.
+- **Railway:** Hosts FastAPI Docker container. Active deployment at `https://[RAILWAY_DOMAIN]`. Runs web server and daily cron jobs.
 - **Supabase:** Managed PostgreSQL DB (accessed via Supavisor Transaction Pool URL, port 6543). Auth provider.
 - **Cloudflare:**
   - R2: Holds raw video uploads (multipart presigned PUT ingest, presigned GET egress). 30-day bucket lifecycle auto-delete rule.
@@ -32,4 +32,6 @@
   - `/api/sessions` — POST creates session, requires auth, enforces $5 minimum price.
   - `/api/clips/multipart` — R2 multipart upload (initiate, presign-parts, complete). Requires auth. 5 GB file size limit. Complete endpoint triggers Stream ingest as background task.
 - `/api/webhooks/cloudflare` — Cloudflare Stream webhook. HMAC-SHA256 signature verification. Updates clip status and session thumbnail.
+- `/api/webhooks/stripe` — Stripe webhook. Signature verification via `stripe.Webhook.construct_event`. Idempotency via `stripe_events` table. Handles `checkout.session.completed` to record purchases.
+- `/api/purchases/checkout` — POST creates Stripe Checkout Session with Connect transfer_data (20% platform fee). Requires auth. Validates filmer has `stripe_account_id`.
 - **Seed Script:** `scripts/seed.py` inserts approved spots (Pipeline, Lowers, Uluwatu).

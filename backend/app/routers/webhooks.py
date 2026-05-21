@@ -2,18 +2,26 @@ import hmac
 import hashlib
 import logging
 import os
+import uuid
 
+import stripe
 from dotenv import load_dotenv
 from fastapi import APIRouter, Request, Response, status
 from sqlmodel import Session
 
 from app.db import engine
-from app.models import Clip, Session as SessionModel
+from app.models import Clip, Purchase, Session as SessionModel, StripeEvent
 
 load_dotenv()
 
 CF_STREAM_WEBHOOK_SECRET = os.environ.get("CF_STREAM_WEBHOOK_SECRET", "")
 CF_STREAM_ACCOUNT_ID = os.environ.get("CF_STREAM_ACCOUNT_ID", "")
+
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
 
 log = logging.getLogger(__name__)
 
@@ -84,5 +92,55 @@ async def cloudflare_webhook(request: Request) -> Response:
             db.add(clip)
             db.commit()
             log.info("clip %s failed", clip_id)
+
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.post("/stripe")
+async def stripe_webhook(request: Request) -> Response:
+    body = await request.body()
+    sig_header = request.headers.get("Stripe-Signature", "")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        log.warning("STRIPE_WEBHOOK_SECRET not set, skipping verification")
+        event = stripe.Event.construct_from(await request.json(), stripe.api_key)
+    else:
+        try:
+            event = stripe.Webhook.construct_event(
+                body, sig_header, STRIPE_WEBHOOK_SECRET
+            )
+        except stripe.error.SignatureVerificationError:
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
+    with Session(engine) as db:
+        existing = db.get(StripeEvent, event.id)
+        if existing is not None:
+            log.info("stripe event %s already processed", event.id)
+            return Response(status_code=status.HTTP_200_OK)
+
+        db.add(StripeEvent(id=event.id, type=event.type))
+
+        if event.type == "checkout.session.completed":
+            obj = event.data.object
+            metadata = obj.get("metadata", {}) if isinstance(obj, dict) else getattr(obj, "metadata", {})
+            session_id = metadata.get("session_id")
+            user_id = metadata.get("user_id")
+            stripe_session_id = obj.get("id") if isinstance(obj, dict) else getattr(obj, "id", None)
+            amount_total = obj.get("amount_total") if isinstance(obj, dict) else getattr(obj, "amount_total", None)
+
+            if session_id and user_id:
+                purchase = Purchase(
+                    user_id=uuid.UUID(user_id),
+                    session_id=uuid.UUID(session_id),
+                    stripe_session_id=stripe_session_id or event.id,
+                    amount_cents=amount_total or 0,
+                )
+                db.add(purchase)
+                log.info(
+                    "purchase recorded: user=%s session=%s amount=%s",
+                    user_id, session_id, amount_total,
+                )
+
+        db.commit()
 
     return Response(status_code=status.HTTP_200_OK)
