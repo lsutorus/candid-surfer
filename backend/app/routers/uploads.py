@@ -1,7 +1,7 @@
 import uuid
 
 from botocore.exceptions import ClientError
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.auth import get_current_user
@@ -98,6 +98,7 @@ def presign_parts(
 @router.post("/complete")
 def complete_upload(
     body: MultipartCompleteRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> dict[str, str]:
@@ -133,5 +134,9 @@ def complete_upload(
     clip.status = "uploaded"
     db.add(clip)
     db.commit()
+
+    from app.services.stream import trigger_cloudflare_ingest
+
+    background_tasks.add_task(trigger_cloudflare_ingest, str(clip.id))
 
     return {"status": "uploaded"}

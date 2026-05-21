@@ -25,9 +25,11 @@
 - **Auth:** `HTTPBearer` extracts Bearer token, `python-jose` decodes JWT locally using `SUPABASE_JWT_SECRET`. Auto-upserts local `users` row on first verified request (id=JWT sub, email=JWT email).
 - **Database:** Supabase PostgreSQL via psycopg3. `postgresql://` URLs auto-rewritten to `postgresql+psycopg://`.
 - **R2 Client:** `app/r2.py` initializes a boto3 S3 client targeting `https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com` (`region_name="auto"`). Reads `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` from env. Enforces 5 GB max file size.
-- **Env Loading:** `python-dotenv` in `app/db.py`, `app/auth.py`, `app/r2.py`, and `alembic/env.py` loads `.env` before reading env vars. Missing critical vars raise `RuntimeError` with setup instructions.
+- **Stream Ingest:** `app/services/stream.py` triggers Cloudflare Stream copy-ingest via `POST /accounts/{id}/stream/copy`. Reads `CF_STREAM_ACCOUNT_ID`, `CF_STREAM_API_TOKEN`, `CF_STREAM_WATERMARK_UID` from env. Called as `BackgroundTask` from multipart complete endpoint.
+- **Env Loading:** `python-dotenv` in `app/db.py`, `app/auth.py`, `app/r2.py`, `app/services/stream.py`, `app/routers/webhooks.py`, and `alembic/env.py` loads `.env` before reading env vars. Missing critical vars raise `RuntimeError` with setup instructions.
 - **Async Processing:** FastAPI `BackgroundTasks` used for non-blocking outbound API calls (e.g., triggering Cloudflare Stream ingest after R2 upload).
 - **Routers:**
   - `/api/sessions` — POST creates session, requires auth, enforces $5 minimum price.
-  - `/api/clips/multipart` — R2 multipart upload (initiate, presign-parts, complete). Requires auth. 5 GB file size limit.
+  - `/api/clips/multipart` — R2 multipart upload (initiate, presign-parts, complete). Requires auth. 5 GB file size limit. Complete endpoint triggers Stream ingest as background task.
+- `/api/webhooks/cloudflare` — Cloudflare Stream webhook. HMAC-SHA256 signature verification. Updates clip status and session thumbnail.
 - **Seed Script:** `scripts/seed.py` inserts approved spots (Pipeline, Lowers, Uluwatu).

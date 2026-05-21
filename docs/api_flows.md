@@ -10,20 +10,20 @@
 
 5. **Direct Upload:** JS `File.slice` splits file into 10 MB chunks. Max 3 concurrent PUT requests to presigned R2 URLs. Each PUT response provides `ETag`. Progress saved to `localStorage` keyed by `sessionId:fileName:fileSize`. On tab reload, hook detects matching file and resumes (re-initiates since ETags aren't persisted). When all parts done, calls `POST /api/clips/multipart/complete` with `clip_id`, `upload_id`, `key`, `parts` (PartNumber + ETag). Updates clip status to "uploaded".
 
-6. **Trigger Ingest:** JS calls `POST /api/clips/{id}/ingest`. FastAPI returns 200 OK immediately and uses `BackgroundTasks` to send R2 HTTP link to Cloudflare Stream API. Status -> "processing".
+6. **Trigger Ingest:** On successful multipart complete, FastAPI `BackgroundTask` calls `trigger_cloudflare_ingest()` which generates a 1-hour presigned R2 GET URL and POSTs it to Cloudflare Stream copy API. Status -> "processing". Watermark applied if `CF_STREAM_WATERMARK_UID` is set.
 
 
 ## 2. Cloudflare Stream Webhook Sequence
 
 1. **Webhook Receive:** Stream hits `POST /api/webhooks/cloudflare`.
 
-2. **Status Check:** If `status == ready`, update `Clips.status = "ready"`.
+2. **Signature Verify:** Read `Webhook-Signature` header (format: `time=X,sig1=Y`). HMAC-SHA256 with `CF_STREAM_WEBHOOK_SECRET` over `X.` + raw body. Return 401 if invalid.
 
-3. **Watermark Trigger:** FastAPI `BackgroundTasks` calls Stream API to apply hard-burned watermark using Watermark UID.
+3. **Status Check:** If `status.state == ready`, update `Clips.status = "ready"`.
 
-4. **Thumbnail Pick:** If this is the first clip in the session, extract Stream thumbnail URL, update `Sessions.thumbnail_url`.
+4. **Thumbnail Pick:** If this is the first clip in the session (Session `thumbnail_url` is null), build Stream thumbnail URL (`https://customer-{account_id}.cloudflarestream.com/{stream_uid}/thumbnails/thumbnail.jpg`) and set it as the Session's `thumbnail_url`.
 
-5. **Error Check:** If Stream reports error, update `Clips.status = "failed"`.
+5. **Error Check:** If `status.state == error`, update `Clips.status = "failed"`.
 
 
 
