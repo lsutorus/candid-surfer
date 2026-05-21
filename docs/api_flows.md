@@ -8,7 +8,7 @@
 
 4. **Presign Parts:** JS calls `POST /api/clips/multipart/presign-parts` with `key`, `upload_id`, `part_numbers`. Returns presigned PUT URLs per part (1hr TTL).
 
-5. **Direct Upload:** JS PUTs each chunk to presigned R2 URLs. On all parts done, calls `POST /api/clips/multipart/complete` with `clip_id`, `upload_id`, `key`, `parts` (PartNumber + ETag). Updates clip status to "uploaded".
+5. **Direct Upload:** JS `File.slice` splits file into 10 MB chunks. Max 3 concurrent PUT requests to presigned R2 URLs. Each PUT response provides `ETag`. Progress saved to `localStorage` keyed by `sessionId:fileName:fileSize`. On tab reload, hook detects matching file and resumes (re-initiates since ETags aren't persisted). When all parts done, calls `POST /api/clips/multipart/complete` with `clip_id`, `upload_id`, `key`, `parts` (PartNumber + ETag). Updates clip status to "uploaded".
 
 6. **Trigger Ingest:** JS calls `POST /api/clips/{id}/ingest`. FastAPI returns 200 OK immediately and uses `BackgroundTasks` to send R2 HTTP link to Cloudflare Stream API. Status -> "processing".
 

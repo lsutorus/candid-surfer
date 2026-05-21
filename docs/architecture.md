@@ -1,6 +1,6 @@
 ## Infrastructure Overview
 
-- **Vercel:** Hosts Next.js client. Connects to FastAPI backend via REST.
+- **Vercel:** Hosts Next.js client (root directory `/frontend`). Connects to FastAPI backend via REST.
 - **Railway:** Hosts FastAPI Docker container. Runs web server and daily cron jobs.
 - **Supabase:** Managed PostgreSQL DB (accessed via Supavisor Transaction Pool URL, port 6543). Auth provider.
 - **Cloudflare:**
@@ -15,6 +15,7 @@
 - **State Management:** TanStack Query handles all API fetching, caching, and cursor-based infinite scrolling.
 - **Map Discovery:** `react-leaflet-cluster` groups spots at high zoom. Uses float box bounds query (`min_lat`, `max_lat`, `min_lng`, `max_lng`) to fetch visible spots.
 - **Player:** Custom `hls.js` component wraps HTML5 `<video>`. Soft-concatenates chronologically sorted clips within a Session. Pre-buffers next clip.
+- **Upload Hook:** `src/hooks/useVideoUpload.ts` handles R2 multipart uploads. 10 MB chunks via `File.slice`, max 3 concurrent PUTs, localStorage resume state (matches file name+size to recover after tab reload), progress reporting. `src/lib/api.ts` provides shared `apiFetch` helper.
 
 
 ## Backend Architecture (FastAPI)
