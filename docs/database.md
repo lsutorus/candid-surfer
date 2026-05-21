@@ -38,7 +38,7 @@
 - `captured_at`: UTC Timestamp (Extracted from JS mp4box.js, used for internal chronological sort, Indexed)
 - `r2_raw_key`: String (Path in R2 bucket)
 - `stream_uid`: String (Nullable, Cloudflare Stream ID)
-- `status`: String (Enum: "uploading", "processing", "ready", "failed")
+- `status`: String (Enum: "uploading", "uploaded", "processing", "ready", "failed")
 - `is_deleted`: Boolean (Default False, set to True by 30-day cron script)
 
 

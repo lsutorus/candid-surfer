@@ -56,7 +56,7 @@ class Clip(SQLModel, table=True):
     captured_at: datetime = Field(index=True)
     r2_raw_key: str
     stream_uid: str | None = Field(default=None)
-    status: str = Field(default="uploading")  # uploading | processing | ready | failed
+    status: str = Field(default="uploading")  # uploading | uploaded | processing | ready | failed
     is_deleted: bool = Field(default=False)
 
 
