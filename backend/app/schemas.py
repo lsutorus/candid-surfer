@@ -22,6 +22,31 @@ class SessionRead(SQLModel):
     created_at: datetime
 
 
+class SpotRead(SQLModel):
+    id: uuid.UUID
+    name: str
+    lat: float
+    lng: float
+    timezone: str
+    is_approved: bool
+
+
+class SessionFeedRead(SQLModel):
+    id: uuid.UUID
+    spot_id: uuid.UUID
+    filmer_id: uuid.UUID
+    start_time: datetime
+    end_time: datetime
+    price: int
+    thumbnail_url: str | None
+    created_at: datetime
+
+
+class SessionFeedResponse(SQLModel):
+    sessions: list[SessionFeedRead]
+    next_cursor: datetime | None
+
+
 class MultipartInitiate(SQLModel):
     session_id: uuid.UUID
     filename: str

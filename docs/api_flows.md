@@ -43,11 +43,11 @@
 
 1. **Request DL:** Buyer JS calls `GET /api/sessions/{session_id}/download-links`.
 
-2. **Verify:** FastAPI checks `Purchases` table for `user_id` + `session_id`.
+2. **Verify:** FastAPI checks `Purchases` table for `user_id` + `session_id`. Returns 403 if no purchase found.
 
-3. **Generate:** FastAPI loops through all raw clips in session. Generates short-lived (1 hour) R2 Presigned GET URLs. Returns array.
+3. **Generate:** FastAPI queries `Clips` where `status == "ready"` for session. Generates 1-hour R2 Presigned GET URLs via `boto3 generate_presigned_url`. Returns `{"links": {clip_id: url}}`.
 
-4. **Client Execute:** Frontend sequential JS download manager fetches files local machine.
+4. **Client Execute:** Frontend sequential JS download manager fetches files to local machine.
 
 
 

@@ -29,7 +29,9 @@
 - **Env Loading:** `python-dotenv` in `app/db.py`, `app/auth.py`, `app/r2.py`, `app/services/stream.py`, `app/routers/webhooks.py`, and `alembic/env.py` loads `.env` before reading env vars. Missing critical vars raise `RuntimeError` with setup instructions.
 - **Async Processing:** FastAPI `BackgroundTasks` used for non-blocking outbound API calls (e.g., triggering Cloudflare Stream ingest after R2 upload).
 - **Routers:**
-  - `/api/sessions` — POST creates session, requires auth, enforces $5 minimum price.
+  - `/api/spots` — GET returns spots within bounding box (`min_lat`, `max_lat`, `min_lng`, `max_lng`). No auth. Float math query.
+  - `/api/sessions` — POST creates session, requires auth, enforces $5 minimum price. GET lists sessions with cursor-based pagination, optional `spot_id` filter.
+  - `/api/sessions/{session_id}/download-links` — GET returns presigned R2 download URLs for purchased session. Requires auth. Verifies Purchase row exists.
   - `/api/clips/multipart` — R2 multipart upload (initiate, presign-parts, complete). Requires auth. 5 GB file size limit. Complete endpoint triggers Stream ingest as background task.
 - `/api/webhooks/cloudflare` — Cloudflare Stream webhook. HMAC-SHA256 signature verification. Updates clip status and session thumbnail.
 - `/api/webhooks/stripe` — Stripe webhook. Signature verification via `stripe.Webhook.construct_event`. Idempotency via `stripe_events` table. Handles `checkout.session.completed` to record purchases.
