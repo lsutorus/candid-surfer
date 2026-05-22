@@ -88,8 +88,8 @@ export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
 
   return (
     <MapContainer
-      center={[33.75, -118.2]}
-      zoom={10}
+      center={[33.3853, -119.5828]}
+      zoom={5}
       className="h-full w-full"
     >
       <TileLayer

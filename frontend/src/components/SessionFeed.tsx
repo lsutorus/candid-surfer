@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import Player from "@/components/Player";
 
 interface Session {
   id: string;
@@ -24,6 +26,8 @@ interface SessionFeedProps {
 }
 
 export default function SessionFeed({ spotId }: SessionFeedProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useInfiniteQuery<SessionFeedResponse>({
       queryKey: ["sessions", spotId],
@@ -77,31 +81,35 @@ export default function SessionFeed({ spotId }: SessionFeedProps) {
       {sessions.map((s) => (
         <div
           key={s.id}
-          className="flex gap-3 rounded-lg border bg-card p-3 shadow-sm"
+          className="flex flex-col gap-2 rounded-lg border bg-card p-3 shadow-sm cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => setSelectedId(selectedId === s.id ? null : s.id)}
         >
-          {s.thumbnail_url ? (
-            <img
-              src={s.thumbnail_url}
-              alt="Session thumbnail"
-              className="h-20 w-32 rounded object-cover"
-            />
-          ) : (
-            <div className="flex h-20 w-32 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
-              No thumbnail
+          <div className="flex gap-3">
+            {s.thumbnail_url ? (
+              <img
+                src={s.thumbnail_url}
+                alt="Session thumbnail"
+                className="h-20 w-32 rounded object-cover"
+              />
+            ) : (
+              <div className="flex h-20 w-32 items-center justify-center rounded bg-muted text-xs text-muted-foreground">
+                No thumbnail
+              </div>
+            )}
+            <div className="flex flex-col justify-between">
+              <span className="text-sm text-muted-foreground">
+                {new Date(s.start_time).toLocaleDateString(undefined, {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+              <span className="text-lg font-semibold">
+                ${(s.price / 100).toFixed(2)}
+              </span>
             </div>
-          )}
-          <div className="flex flex-col justify-between">
-            <span className="text-sm text-muted-foreground">
-              {new Date(s.start_time).toLocaleDateString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-            <span className="text-lg font-semibold">
-              ${(s.price / 100).toFixed(2)}
-            </span>
           </div>
+          {selectedId === s.id && <Player sessionId={s.id} />}
         </div>
       ))}
       {hasNextPage && (

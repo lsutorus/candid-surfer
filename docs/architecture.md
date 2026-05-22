@@ -13,10 +13,10 @@
 
 - **Framework:** Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui.
 - **State Management:** TanStack Query handles all API fetching, caching, and cursor-based infinite scrolling.
-- **Map Discovery:** `src/components/SpotMap.tsx` renders Leaflet map with `react-leaflet-cluster` grouping spots at high zoom. Dynamically imported via `src/components/Map.tsx` using `next/dynamic` with `ssr: false` (Leaflet requires `window`). Tracks bounds on `moveend`, fetches visible spots via TanStack Query using float box query (`min_lat`, `max_lat`, `min_lng`, `max_lng`). Marker click sets `activeSpotId`. Marker icons fixed via CDN `L.icon()` (unpkg) assigned to `L.Marker.prototype.options.icon` (Next.js bundler breaks local image imports). Strict-mode mount guard (`useState` + `useEffect`) prevents Leaflet double-mount crash.
-- **Session Feed:** `src/components/SessionFeed.tsx` accepts `spotId` prop, uses `useInfiniteQuery` to fetch `GET /api/sessions?spot_id=...&limit=10&cursor=...`. Renders cards (thumbnail, date, price). "Load more" paginates via `next_cursor`.
+- **Map Discovery:** `src/components/SpotMap.tsx` renders Leaflet map with `react-leaflet-cluster` grouping spots at high zoom. Dynamically imported via `src/components/Map.tsx` using `next/dynamic` with `ssr: false` (Leaflet requires `window`). Default center `[33.3853, -119.5828]` zoom `5` (California overview). Tracks bounds on `moveend`, fetches visible spots via TanStack Query using float box query (`min_lat`, `max_lat`, `min_lng`, `max_lng`). Marker click sets `activeSpotId`. Marker icons fixed via CDN `L.icon()` (unpkg) assigned to `L.Marker.prototype.options.icon` (Next.js bundler breaks local image imports). Strict-mode mount guard (`useState` + `useEffect`) prevents Leaflet double-mount crash.
+- **Session Feed:** `src/components/SessionFeed.tsx` accepts `spotId` prop, uses `useInfiniteQuery` to fetch `GET /api/sessions?spot_id=...&limit=10&cursor=...`. Renders cards (thumbnail, date, price). Clicking a card toggles inline `<Player>` for that session. "Load more" paginates via `next_cursor`.
 - **Discovery Page:** `src/app/page.tsx` — split layout: map top/left, feed bottom/right. Manages `activeSpotId`, passes to both.
-- **Leaflet CSS:** Imported in `src/app/globals.css` via `@import "leaflet/dist/leaflet.css"`.
+- **Leaflet CSS:** Imported via JS `import "leaflet/dist/leaflet.css"` in `src/app/layout.tsx` (Tailwind v4 drops `@import` in CSS files). Tile img override in `src/app/globals.css` prevents Tailwind `max-width: 100%` from distorting tiles.
 - **Player:** Custom `hls.js` component wraps HTML5 `<video>`. Soft-concatenates chronologically sorted clips within a Session. Pre-buffers next clip.
 - **Upload Hook:** `src/hooks/useVideoUpload.ts` handles R2 multipart uploads. 10 MB chunks via `File.slice`, max 3 concurrent PUTs, localStorage resume state (matches file name+size to recover after tab reload), progress reporting. `src/lib/api.ts` provides shared `apiFetch` helper.
 
@@ -36,6 +36,7 @@
   - `/api/spots` — GET returns spots within bounding box (`min_lat`, `max_lat`, `min_lng`, `max_lng`). No auth. Float math query.
   - `/api/sessions` — POST creates session, requires auth, enforces $5 minimum price. GET lists sessions with cursor-based pagination, optional `spot_id` filter.
   - `/api/sessions/{session_id}/download-links` — GET returns presigned R2 download URLs for purchased session. Requires auth. Verifies Purchase row exists.
+- `/api/sessions/{session_id}/clips` — GET returns `stream_uid` list for ready clips in a session, ordered by `captured_at`. No auth required.
   - `/api/clips/multipart` — R2 multipart upload (initiate, presign-parts, complete). Requires auth. 5 GB file size limit. Complete endpoint triggers Stream ingest as background task.
   - `/api/webhooks/cloudflare` — Cloudflare Stream webhook. HMAC-SHA256 signature verification. Updates clip status and session thumbnail.
   - `/api/webhooks/stripe` — Stripe webhook. Signature verification via `stripe.Webhook.construct_event`. Idempotency via `stripe_events` table. Handles `checkout.session.completed` to record purchases.

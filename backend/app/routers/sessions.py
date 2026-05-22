@@ -12,6 +12,19 @@ from app.schemas import SessionCreate, SessionFeedRead, SessionFeedResponse, Ses
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
+
+@router.get("/{session_id}/clips")
+def get_session_clips(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+) -> list[str]:
+    clips = db.exec(
+        select(Clip)
+        .where(Clip.session_id == session_id, Clip.status == "ready")
+        .order_by(Clip.captured_at.asc())
+    ).all()
+    return [c.stream_uid for c in clips if c.stream_uid]
+
 MIN_PRICE_CENTS = 500
 
 
