@@ -7,16 +7,18 @@ import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import { apiFetch } from "@/lib/api";
 
-// Fix default marker icon paths broken by webpack
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+// Fix default marker icon paths broken by Next.js bundler
+const DefaultIcon = L.icon({
   iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
 });
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface Spot {
   id: string;
@@ -56,7 +58,10 @@ function BoundsTracker({
 }
 
 export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
+  const [mounted, setMounted] = useState(false);
   const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
+
+  useEffect(() => setMounted(true), []);
 
   const { data: spots = [] } = useQuery<Spot[]>({
     queryKey: [
@@ -78,6 +83,8 @@ export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
   });
 
   const handleBoundsChange = (b: L.LatLngBounds) => setBounds(b);
+
+  if (!mounted) return null;
 
   return (
     <MapContainer

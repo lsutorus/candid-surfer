@@ -13,7 +13,7 @@
 
 - **Framework:** Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui.
 - **State Management:** TanStack Query handles all API fetching, caching, and cursor-based infinite scrolling.
-- **Map Discovery:** `src/components/SpotMap.tsx` renders Leaflet map with `react-leaflet-cluster` grouping spots at high zoom. Dynamically imported via `src/components/Map.tsx` using `next/dynamic` with `ssr: false` (Leaflet requires `window`). Tracks bounds on `moveend`, fetches visible spots via TanStack Query using float box query (`min_lat`, `max_lat`, `min_lng`, `max_lng`). Marker click sets `activeSpotId`.
+- **Map Discovery:** `src/components/SpotMap.tsx` renders Leaflet map with `react-leaflet-cluster` grouping spots at high zoom. Dynamically imported via `src/components/Map.tsx` using `next/dynamic` with `ssr: false` (Leaflet requires `window`). Tracks bounds on `moveend`, fetches visible spots via TanStack Query using float box query (`min_lat`, `max_lat`, `min_lng`, `max_lng`). Marker click sets `activeSpotId`. Marker icons fixed via CDN `L.icon()` (unpkg) assigned to `L.Marker.prototype.options.icon` (Next.js bundler breaks local image imports). Strict-mode mount guard (`useState` + `useEffect`) prevents Leaflet double-mount crash.
 - **Session Feed:** `src/components/SessionFeed.tsx` accepts `spotId` prop, uses `useInfiniteQuery` to fetch `GET /api/sessions?spot_id=...&limit=10&cursor=...`. Renders cards (thumbnail, date, price). "Load more" paginates via `next_cursor`.
 - **Discovery Page:** `src/app/page.tsx` — split layout: map top/left, feed bottom/right. Manages `activeSpotId`, passes to both.
 - **Leaflet CSS:** Imported in `src/app/globals.css` via `@import "leaflet/dist/leaflet.css"`.
@@ -24,6 +24,7 @@
 ## Backend Architecture (FastAPI)
 
 - **Framework:** FastAPI with `slowapi` rate limiting.
+- **CORS:** `CORSMiddleware` added in `app/main.py`. Origins read from `CORS_ORIGINS` env var (comma-separated), defaults to `http://localhost:3000`. `allow_credentials=True`, wildcard methods/headers.
 - **ORM:** SQLModel handles both API validation schemas and DB models. Alembic handles migrations.
 - **Auth:** `HTTPBearer` extracts Bearer token, `python-jose` decodes JWT locally using `SUPABASE_JWT_SECRET`. Auto-upserts local `users` row on first verified request (id=JWT sub, email=JWT email).
 - **Database:** Supabase PostgreSQL via psycopg3. `postgresql://` URLs auto-rewritten to `postgresql+psycopg://`.

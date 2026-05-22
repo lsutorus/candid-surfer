@@ -26,3 +26,14 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 ### Workflow Directives
 - **Updating Docs:** Update the `/docs` files at the end of sessions to reflect structural changes.
 - **State Check:** Before implementing large features, read the relevant `/docs/` file to maintain alignment.
+
+## Agent skills
+
+### Issue tracker
+Issues live in GitHub (lsutorus/candid-surfer). Uses `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+Default vocabulary: needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+Single-context — one CONTEXT.md + docs/adr/ at repo root. See `docs/agents/domain.md`.
