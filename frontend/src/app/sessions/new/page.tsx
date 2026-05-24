@@ -3,8 +3,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { useAuth } from "@/components/AuthProvider";
+import { apiFetch } from "@/lib/api";
 
 const SPOTS = [
   { id: "a1b2c3d4-0001-4000-8000-000000000001", name: "Pipeline, Hawaii" },
@@ -13,12 +13,13 @@ const SPOTS = [
 ];
 
 export default function NewSessionPage() {
+  const { user, loading: authLoading, getAccessToken } = useAuth();
+
   const [spotId, setSpotId] = useState(SPOTS[0].id);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [priceDollars, setPriceDollars] = useState("5");
   const [files, setFiles] = useState<File[]>([]);
-  const [authToken, setAuthToken] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const sessionMutation = useMutation({
@@ -28,17 +29,12 @@ export default function NewSessionPage() {
       end_time: string;
       price: number;
     }) => {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
-      const res = await fetch(`${API_URL}/api/sessions`, {
+      const token = await getAccessToken();
+      return apiFetch<{ id: string }>("/api/sessions", {
         method: "POST",
-        headers,
+        token: token ?? undefined,
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json() as Promise<{ id: string }>;
     },
   });
 
@@ -61,15 +57,36 @@ export default function NewSessionPage() {
   }
 
   async function handleUpload() {
-    if (!files[0] || !sessionId || !authToken) return;
-    // Extract captured_at from file modification time as fallback
-    // (mp4box.js integration would be added here in production)
+    if (!files[0] || !sessionId) return;
+    const token = await getAccessToken();
+    if (!token) return;
     const capturedAt = new Date().toISOString();
-    await upload(files[0], capturedAt, authToken);
+    await upload(files[0], capturedAt, token);
+  }
+
+  if (authLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <p className="text-muted-foreground">
+          <a href="/auth/login?redirect=/sessions/new" className="underline">
+            Log in
+          </a>{" "}
+          to create a session
+        </p>
+      </div>
+    );
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+    <div className="flex flex-1 flex-col items-center justify-center p-8">
       <h1 className="mb-6 text-2xl font-semibold">Create Session</h1>
       <form onSubmit={handleSubmit} className="flex w-full max-w-md flex-col gap-4">
         <label className="flex flex-col gap-1">
@@ -77,7 +94,7 @@ export default function NewSessionPage() {
           <select
             value={spotId}
             onChange={(e) => setSpotId(e.target.value)}
-            className="rounded border p-2"
+            className="rounded border bg-white p-2 text-black"
           >
             {SPOTS.map((s) => (
               <option key={s.id} value={s.id}>
@@ -93,7 +110,7 @@ export default function NewSessionPage() {
             value={startTime}
             onChange={(e) => setStartTime(e.target.value)}
             required
-            className="rounded border p-2"
+            className="rounded border bg-white p-2 text-black"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -103,7 +120,7 @@ export default function NewSessionPage() {
             value={endTime}
             onChange={(e) => setEndTime(e.target.value)}
             required
-            className="rounded border p-2"
+            className="rounded border bg-white p-2 text-black"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -115,17 +132,7 @@ export default function NewSessionPage() {
             value={priceDollars}
             onChange={(e) => setPriceDollars(e.target.value)}
             required
-            className="rounded border p-2"
-          />
-        </label>
-        <label className="flex flex-col gap-1">
-          Auth Token
-          <input
-            type="password"
-            value={authToken}
-            onChange={(e) => setAuthToken(e.target.value)}
-            placeholder="Supabase JWT"
-            className="rounded border p-2"
+            className="rounded border bg-white p-2 text-black"
           />
         </label>
         <button
@@ -143,7 +150,6 @@ export default function NewSessionPage() {
         )}
       </form>
 
-      {/* Upload section — visible after session is created */}
       {sessionMutation.isSuccess && (
         <div className="mt-8 w-full max-w-md">
           <h2 className="mb-4 text-xl font-semibold">Upload Video</h2>
@@ -155,7 +161,7 @@ export default function NewSessionPage() {
               type="file"
               accept="video/mp4"
               onChange={handleFileChange}
-              className="rounded border p-2"
+              className="rounded border bg-white p-2 text-black"
             />
           </label>
 
@@ -169,7 +175,9 @@ export default function NewSessionPage() {
             <button
               onClick={handleUpload}
               disabled={
-                !files[0] || !authToken || status === "uploading" || status === "completing"
+                !files[0] ||
+                status === "uploading" ||
+                status === "completing"
               }
               className="rounded bg-black p-2 text-white hover:bg-zinc-800 disabled:opacity-50"
             >
@@ -206,6 +214,6 @@ export default function NewSessionPage() {
           {error && <p className="mt-2 text-red-600">Error: {error}</p>}
         </div>
       )}
-    </main>
+    </div>
   );
 }

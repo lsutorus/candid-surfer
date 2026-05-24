@@ -22,10 +22,12 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 - **Do not** use Supabase API for JWT verification in FastAPI. Verify mathematically using the Supabase JWT secret locally.
 - **Do not** build custom user roles (e.g., Filmer vs. Surfer table). Use a single unified `Users` table.
 - **Do not** poll for video status. Rely strictly on Cloudflare Stream webhooks.
+- **Do not** guess strings for file update tools. Always read exact lines first, copy exact text, then replace. If edit fails, rewrite entire file.
 
 ### Workflow Directives
 - **Updating Docs:** Update the `/docs` files at the end of sessions to reflect structural changes.
 - **State Check:** Before implementing large features, read the relevant `/docs/` file to maintain alignment.
+- **Roadmap:** Read `docs/roadmap.md` before starting work to find next pending phase. Mark items as `[x]` completed after implementation.
 
 ## Agent skills
 

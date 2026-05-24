@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 import Player from "@/components/Player";
 
 interface Session {
@@ -27,6 +28,7 @@ interface SessionFeedProps {
 
 export default function SessionFeed({ spotId }: SessionFeedProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useInfiniteQuery<SessionFeedResponse>({
@@ -107,6 +109,14 @@ export default function SessionFeed({ spotId }: SessionFeedProps) {
               <span className="text-lg font-semibold">
                 ${(s.price / 100).toFixed(2)}
               </span>
+              {!user && (
+                <a
+                  href="/auth/login"
+                  className="text-xs text-zinc-500 underline"
+                >
+                  Log in to purchase
+                </a>
+              )}
             </div>
           </div>
           {selectedId === s.id && <Player sessionId={s.id} />}

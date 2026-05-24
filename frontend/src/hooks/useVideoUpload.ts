@@ -81,7 +81,7 @@ export function useVideoUpload(sessionId: string | null) {
       token: string,
     ) => {
       if (!sessionId) throw new Error("No session ID");
-    const sid = sessionId;
+      const sid = sessionId;
 
       abortRef.current = new AbortController();
       completedPartsRef.current = new Map();
@@ -102,11 +102,8 @@ export function useVideoUpload(sessionId: string | null) {
         key = saved.key;
         clipId = saved.clipId;
         saved.completedParts.forEach((pn) => {
-          // We don't have the ETag for already-completed parts —
-          // if we resumed we must re-upload those parts since ETags
-          // aren't persisted. Clear the stale resume state and start fresh.
+          // Re-upload parts since ETags aren't persisted
         });
-        // Clear stale state since we can't reconstruct ETags
         clearState(sid, file.name, file.size);
       }
 
@@ -115,7 +112,7 @@ export function useVideoUpload(sessionId: string | null) {
         "/api/clips/multipart/initiate",
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          token,
           body: JSON.stringify({
             session_id: sessionId,
             filename: file.name,
@@ -146,12 +143,11 @@ export function useVideoUpload(sessionId: string | null) {
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const blob = file.slice(start, end);
 
-        // Get presigned URL for this part
         const presign = await apiFetch<PresignResponse>(
           "/api/clips/multipart/presign-parts",
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            token,
             body: JSON.stringify({
               key,
               upload_id: uploadId,
@@ -163,7 +159,6 @@ export function useVideoUpload(sessionId: string | null) {
         const url = presign[String(partNumber)];
         if (!url) throw new Error(`No presigned URL for part ${partNumber}`);
 
-        // Upload chunk directly to R2
         const res = await fetch(url, {
           method: "PUT",
           body: blob,
@@ -184,7 +179,6 @@ export function useVideoUpload(sessionId: string | null) {
           ETag: etag,
         });
 
-        // Save progress
         uploadState.completedParts = [...completedPartsRef.current.keys()];
         saveState(sid, uploadState);
 
@@ -192,7 +186,6 @@ export function useVideoUpload(sessionId: string | null) {
         setProgress(Math.round((completed / totalParts) * 100));
       }
 
-      // Pool of concurrent uploaders
       async function worker(): Promise<void> {
         while (nextIndex < allPartNumbers.length) {
           const idx = nextIndex++;
@@ -225,7 +218,7 @@ export function useVideoUpload(sessionId: string | null) {
           "/api/clips/multipart/complete",
           {
             method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
+            token,
             body: JSON.stringify({
               clip_id: clipId,
               upload_id: uploadId,

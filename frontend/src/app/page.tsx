@@ -8,13 +8,13 @@ export default function Home() {
   const [activeSpotId, setActiveSpotId] = useState<string | null>(null);
 
   return (
-    <main className="flex h-screen flex-col md:flex-row">
-      <div className="h-1/2 md:h-full md:w-1/2">
+    <div className="flex flex-1 flex-col md:flex-row">
+      <div className="h-80 md:h-full md:w-1/2">
         <Map activeSpotId={activeSpotId} onSpotSelect={setActiveSpotId} />
       </div>
-      <div className="h-1/2 md:h-full md:w-1/2 border-t md:border-t-0 md:border-l">
+      <div className="flex-1 border-t md:border-t-0 md:border-l">
         <SessionFeed spotId={activeSpotId} />
       </div>
-    </main>
+    </div>
   );
 }
