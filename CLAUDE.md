@@ -2,6 +2,7 @@
 - Runtime: PowerShell 7.x (pwsh)
 - Do not use legacy WMI cmdlets (use CIM instead).
 - Use forward slashes `/` for paths to prevent escape-character bugs during CLI tool execution.
+- Use `uv` (not pip) for Python package management in backend venv.
 
 ## System constitution: Candid Surfer
 This document defines core rules. Review `/docs/architecture.md`, `/docs/database.md`, and `/docs/api_flows.md` before planning tasks.
@@ -19,7 +20,7 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 - **Do not** use PostGIS. Use standard PostgreSQL float math for map bounding box queries.
 - **Do not** enable SSR for Leaflet map components. Always use `next/dynamic` with `ssr: false`.
 - **Do not** proxy large video uploads/downloads through FastAPI. Always use browser-to-R2 presigned URLs.
-- **Do not** use Supabase API for JWT verification in FastAPI. Verify mathematically using the Supabase JWT secret locally.
+- **Do not** use Supabase API for JWT verification in FastAPI. Verify tokens via JWKS public key fetch (ES256), not shared secret.
 - **Do not** build custom user roles (e.g., Filmer vs. Surfer table). Use a single unified `Users` table.
 - **Do not** poll for video status. Rely strictly on Cloudflare Stream webhooks.
 - **Do not** guess strings for file update tools. Always read exact lines first, copy exact text, then replace. If edit fails, rewrite entire file.
