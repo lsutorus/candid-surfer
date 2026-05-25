@@ -8,6 +8,7 @@
 - [x] Session Feed (cursor-based infinite scroll, spot filter, inline Player toggle)
 - [x] Video Player (hls.js soft-concat, pre-buffer next clip, Cloudflare Stream HLS)
 - [x] Auth UI (Supabase SSR, LoginForm, AuthProvider, proxy middleware, apiFetch JWT injection, protected upload route)
+- [x] Backend JWT verification (ES256 JWKS via PyJWT, thread-safe cache, Supabase key rotation support)
 
 ## Pending
 

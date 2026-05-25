@@ -34,11 +34,11 @@
 - **Framework:** FastAPI with `slowapi` rate limiting.
 - **CORS:** `CORSMiddleware` added in `app/main.py`. Origins read from `CORS_ORIGINS` env var (comma-separated), defaults to `http://localhost:3000`. `allow_credentials=True`, wildcard methods/headers.
 - **ORM:** SQLModel handles both API validation schemas and DB models. Alembic handles migrations.
-- **Auth:** `HTTPBearer` extracts Bearer token, `python-jose` decodes JWT locally using `SUPABASE_JWT_SECRET`. Auto-upserts local `users` row on first verified request (id=JWT sub, email=JWT email).
+- **Auth:** `HTTPBearer` extracts Bearer token. PyJWT verifies ES256 tokens against Supabase JWKS public keys fetched from `{SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json`. Thread-safe JWKS cache with 10-min TTL + auto re-fetch on `kid` mismatch (key rotation). Checks `aud="authenticated"` and token expiry. Auto-upserts local `users` row on first verified request (id=JWT sub, email=JWT email).
 - **Database:** Supabase PostgreSQL via psycopg3. `postgresql://` URLs auto-rewritten to `postgresql+psycopg://`.
 - **R2 Client:** `app/r2.py` initializes a boto3 S3 client targeting `https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com` (`region_name="auto"`). Reads `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` from env. Enforces 5 GB max file size.
 - **Stream Ingest:** `app/services/stream.py` triggers Cloudflare Stream copy-ingest via `POST /accounts/{id}/stream/copy`. Reads `CF_STREAM_ACCOUNT_ID`, `CF_STREAM_API_TOKEN`, `CF_STREAM_WATERMARK_UID` from env. Called as `BackgroundTask` from multipart complete endpoint.
-- **Env Loading:** `python-dotenv` in `app/db.py`, `app/auth.py`, `app/r2.py`, `app/services/stream.py`, `app/routers/webhooks.py`, and `alembic/env.py` loads `.env` before reading env vars. Missing critical vars raise `RuntimeError` with setup instructions.
+- **Env Loading:** `python-dotenv` in `app/db.py`, `app/r2.py`, `app/services/stream.py`, `app/routers/webhooks.py`, and `alembic/env.py` loads `.env` before reading env vars. Missing critical vars raise `RuntimeError` with setup instructions.
 - **Async Processing:** FastAPI `BackgroundTasks` used for non-blocking outbound API calls (e.g., triggering Cloudflare Stream ingest after R2 upload).
 - **Routers:**
   - `/api/spots` — GET returns spots within bounding box (`min_lat`, `max_lat`, `min_lng`, `max_lng`). No auth. Float math query.
