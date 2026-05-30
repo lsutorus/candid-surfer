@@ -3,6 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { useVideoUpload } from "@/hooks/useVideoUpload";
+import { useClipStatus } from "@/hooks/useClipStatus";
 import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api";
 
@@ -42,6 +43,11 @@ export default function NewSessionPage() {
   const { upload, cancel, progress, status, error } =
     useVideoUpload(sessionId);
 
+  const clipStatus = useClipStatus(
+    sessionId,
+    status === "done",
+  );
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     sessionMutation.mutate({
@@ -58,10 +64,8 @@ export default function NewSessionPage() {
 
   async function handleUpload() {
     if (!files[0] || !sessionId) return;
-    const token = await getAccessToken();
-    if (!token) return;
     const capturedAt = new Date().toISOString();
-    await upload(files[0], capturedAt, token);
+    await upload(files[0], capturedAt);
   }
 
   if (authLoading) {
@@ -84,6 +88,8 @@ export default function NewSessionPage() {
       </div>
     );
   }
+
+  const aggregate = clipStatus.data?.aggregate;
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center p-8">
@@ -209,7 +215,21 @@ export default function NewSessionPage() {
           )}
 
           {status === "done" && (
-            <p className="mt-2 text-green-600">Video uploaded successfully!</p>
+            <div className="mt-2">
+              {aggregate === "ready" ? (
+                <p className="text-green-600">
+                  Video processed and ready to view!
+                </p>
+              ) : aggregate === "failed" ? (
+                <p className="text-red-600">
+                  Processing failed. Please try uploading again.
+                </p>
+              ) : (
+                <p className="animate-pulse text-amber-600">
+                  Processing video… this may take a few minutes
+                </p>
+              )}
+            </div>
           )}
           {error && <p className="mt-2 text-red-600">Error: {error}</p>}
         </div>

@@ -8,9 +8,32 @@ from app.auth import get_current_user
 from app.deps import get_db
 from app.models import Clip, Purchase, Session as SessionModel, Spot, User
 from app.r2 import R2_BUCKET, r2_client
-from app.schemas import SessionCreate, SessionFeedRead, SessionFeedResponse, SessionRead
+from app.schemas import ClipStatusRead, SessionCreate, SessionFeedRead, SessionFeedResponse, SessionRead, SessionStatusResponse
+from app.services.clip_status import aggregate_clip_status
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
+
+
+@router.get("/{session_id}/status", response_model=SessionStatusResponse)
+def get_session_status(
+    session_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> SessionStatusResponse:
+    session = db.get(SessionModel, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.filmer_id != user.id:
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    clips = db.exec(
+        select(Clip).where(Clip.session_id == session_id)
+    ).all()
+
+    clip_statuses = [ClipStatusRead(clip_id=c.id, status=c.status) for c in clips]
+    aggregate = aggregate_clip_status({c.status for c in clips})
+
+    return SessionStatusResponse(clips=clip_statuses, aggregate=aggregate)
 
 
 @router.get("/{session_id}/clips")
@@ -81,8 +104,32 @@ def list_sessions(
     sessions = rows[:limit]
     next_cursor = sessions[-1].created_at if has_next and sessions else None
 
+    session_ids = [s.id for s in sessions]
+    all_clips = db.exec(
+        select(Clip).where(Clip.session_id.in_(session_ids))
+    ).all() if session_ids else []
+
+    clip_map: dict[uuid.UUID, set[str]] = {}
+    for c in all_clips:
+        clip_map.setdefault(c.session_id, set()).add(c.status)
+
+    feed_items = [
+        SessionFeedRead(
+            id=s.id,
+            spot_id=s.spot_id,
+            filmer_id=s.filmer_id,
+            start_time=s.start_time,
+            end_time=s.end_time,
+            price=s.price,
+            thumbnail_url=s.thumbnail_url,
+            clip_status=aggregate_clip_status(clip_map.get(s.id, set())),
+            created_at=s.created_at,
+        )
+        for s in sessions
+    ]
+
     return SessionFeedResponse(
-        sessions=sessions,
+        sessions=feed_items,
         next_cursor=next_cursor,
     )
 

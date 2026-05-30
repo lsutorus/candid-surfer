@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/components/AuthProvider";
 import Player from "@/components/Player";
@@ -14,6 +14,7 @@ interface Session {
   end_time: string;
   price: number;
   thumbnail_url: string | null;
+  clip_status: string;
   created_at: string;
 }
 
@@ -28,7 +29,23 @@ interface SessionFeedProps {
 
 export default function SessionFeed({ spotId }: SessionFeedProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const [buyingId, setBuyingId] = useState<string | null>(null);
+  const { user, getAccessToken } = useAuth();
+
+  const checkoutMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error("Not authenticated");
+      return apiFetch<{ url: string }>("/api/purchases/checkout", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+  });
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
     useInfiniteQuery<SessionFeedResponse>({
@@ -99,23 +116,49 @@ export default function SessionFeed({ spotId }: SessionFeedProps) {
               </div>
             )}
             <div className="flex flex-col justify-between">
-              <span className="text-sm text-muted-foreground">
-                {new Date(s.start_time).toLocaleDateString(undefined, {
-                  weekday: "short",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {new Date(s.start_time).toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+                {s.clip_status !== "ready" && (
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">
+                    {s.clip_status === "failed" ? "Failed" : "Processing"}
+                  </span>
+                )}
+              </div>
               <span className="text-lg font-semibold">
                 ${(s.price / 100).toFixed(2)}
               </span>
-              {!user && (
+              {user ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setBuyingId(s.id);
+                    checkoutMutation.mutate(s.id);
+                  }}
+                  disabled={checkoutMutation.isPending && buyingId === s.id}
+                  className="rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {checkoutMutation.isPending && buyingId === s.id
+                    ? "Redirecting..."
+                    : "Buy"}
+                </button>
+              ) : (
                 <a
                   href="/auth/login"
                   className="text-xs text-zinc-500 underline"
                 >
                   Log in to purchase
                 </a>
+              )}
+              {checkoutMutation.isError && buyingId === s.id && (
+                <span className="text-xs text-destructive">
+                  {checkoutMutation.error.message}
+                </span>
               )}
             </div>
           </div>

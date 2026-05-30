@@ -8,7 +8,7 @@
 
 4. **Presign Parts:** JS calls `POST /api/clips/multipart/presign-parts` with `key`, `upload_id`, `part_numbers`. Returns presigned PUT URLs per part (1hr TTL).
 
-5. **Direct Upload:** JS `File.slice` splits file into 10 MB chunks. Max 3 concurrent PUT requests to presigned R2 URLs. Each PUT response provides `ETag`. Progress saved to `localStorage` keyed by `sessionId:fileName:fileSize`. On tab reload, hook detects matching file and resumes (re-initiates since ETags aren't persisted). When all parts done, calls `POST /api/clips/multipart/complete` with `clip_id`, `upload_id`, `key`, `parts` (PartNumber + ETag). Updates clip status to "uploaded".
+5. **Direct Upload:** JS `File.slice` splits file into 10 MB chunks. Max 3 concurrent PUT requests to presigned R2 URLs. Each PUT response provides `ETag`. Progress saved to `localStorage` keyed by `sessionId:fileName:fileSize`. On tab reload, hook detects matching file and resumes (re-initiates since ETags aren't persisted). When all parts done, calls `POST /api/clips/multipart/complete` with `clip_id`, `upload_id`, `key`, `parts` (PartNumber + ETag). Updates clip status to "uploaded". **Requires R2 bucket CORS policy:** `AllowedOrigins` must include the frontend domain, `AllowedMethods` must include `PUT`, and `ExposeHeaders` must include `ETag` (browser hides ETag from JS without it).
 
 6. **Trigger Ingest:** On successful multipart complete, FastAPI `BackgroundTask` calls `trigger_cloudflare_ingest()` which generates a 1-hour presigned R2 GET URL and POSTs it to Cloudflare Stream copy API. Status -> "processing". Watermark applied if `CF_STREAM_WATERMARK_UID` is set.
 

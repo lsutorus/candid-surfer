@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/components/AuthProvider";
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
 const MAX_CONCURRENT = 3;
@@ -66,6 +67,7 @@ function clearState(
 }
 
 export function useVideoUpload(sessionId: string | null) {
+  const { getAccessToken } = useAuth();
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<
     "idle" | "uploading" | "completing" | "done" | "error"
@@ -78,10 +80,12 @@ export function useVideoUpload(sessionId: string | null) {
     async (
       file: File,
       capturedAt: string,
-      token: string,
     ) => {
       if (!sessionId) throw new Error("No session ID");
       const sid = sessionId;
+
+      const token = await getAccessToken();
+      if (!token) throw new Error("Not authenticated");
 
       abortRef.current = new AbortController();
       completedPartsRef.current = new Map();
@@ -112,7 +116,7 @@ export function useVideoUpload(sessionId: string | null) {
         "/api/clips/multipart/initiate",
         {
           method: "POST",
-          token,
+          token: token ?? undefined,
           body: JSON.stringify({
             session_id: sessionId,
             filename: file.name,
@@ -147,7 +151,7 @@ export function useVideoUpload(sessionId: string | null) {
           "/api/clips/multipart/presign-parts",
           {
             method: "POST",
-            token,
+            token: token ?? undefined,
             body: JSON.stringify({
               key,
               upload_id: uploadId,
@@ -218,7 +222,7 @@ export function useVideoUpload(sessionId: string | null) {
           "/api/clips/multipart/complete",
           {
             method: "POST",
-            token,
+            token: token ?? undefined,
             body: JSON.stringify({
               clip_id: clipId,
               upload_id: uploadId,

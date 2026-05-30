@@ -19,16 +19,25 @@ Build page to create session and trigger video upload hook.
 - [x] Wire `useVideoUpload.ts` hook to file input with chunked upload progress bar
 - [x] Call `POST /api/sessions` then `POST /api/clips/multipart/*` sequence
 - [x] Add resume-from-localStorage detection on page load
-- [ ] Show upload status (uploading → processing → ready) via polling or TanStack Query
+- [x] Show upload status (uploading → processing → ready) via polling or TanStack Query
+- [x] End-to-end upload verified: R2 CORS policy configured (AllowedOrigins + ExposeHeaders: ETag), backend CORS_ORIGINS set to production Vercel domain
+
+### Phase 2b — Stream Ingest Pipeline
+Clips upload to R2 successfully but Cloudflare Stream ingest may fail silently (background task errors not surfaced). Clips stuck in "processing" status.
+
+- [ ] Verify `trigger_cloudflare_ingest` background task succeeds (check Railway deploy logs after upload)
+- [ ] Verify Cloudflare Stream webhook (`POST /api/webhooks/cloudflare`) is reachable from Stream (check webhook URL in Stream dashboard)
+- [ ] Add logging/error recovery for failed Stream ingest background tasks
+- [ ] Confirm end-to-end flow: upload → R2 → Stream ingest → webhook → clip status "ready"
 
 ### Phase 3 — Purchase UI
 Wire Stripe buy button and download manager.
 
-- [ ] Add "Buy" button to session cards in SessionFeed
-- [ ] Call `POST /api/purchases/checkout`, redirect to Stripe Hosted Checkout
-- [ ] Handle checkout return (success/cancel URLs)
-- [ ] Build download manager page calling `GET /api/sessions/{id}/download-links`
-- [ ] Sequential download of presigned R2 URLs to local machine
+- [x] Add "Buy" button to session cards in SessionFeed
+- [x] Call `POST /api/purchases/checkout`, redirect to Stripe Hosted Checkout
+- [x] Handle checkout return (success/cancel URLs)
+- [x] Build download manager page calling `GET /api/sessions/{id}/download-links`
+- [x] Sequential download of presigned R2 URLs to local machine
 
 ### Phase 4 — Spot Suggestion
 Build form for user to suggest spot.

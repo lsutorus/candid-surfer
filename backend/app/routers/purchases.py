@@ -4,11 +4,11 @@ import uuid
 import stripe
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session, Session as DBSession, select, SQLModel
 
 from app.auth import get_current_user
 from app.deps import get_db
-from app.models import Session as SessionModel, User
+from app.models import Purchase, Session as SessionModel, Spot, User
 
 load_dotenv()
 
@@ -31,10 +31,24 @@ class CheckoutRequest(SQLModel):
     session_id: uuid.UUID
 
 
+class PurchaseRead(SQLModel):
+    id: uuid.UUID
+    session_id: uuid.UUID
+    amount_cents: int
+    created_at: str
+    session_start_time: str
+    session_thumbnail_url: str | None
+    spot_name: str
+
+
+class PurchaseListResponse(SQLModel):
+    purchases: list[PurchaseRead]
+
+
 @router.post("/checkout")
 def create_checkout(
     body: CheckoutRequest,
-    db: Session = Depends(get_db),
+    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     session = db.get(SessionModel, body.session_id)
@@ -84,3 +98,35 @@ def create_checkout(
     )
 
     return {"url": checkout_session.url}
+
+
+@router.get("", response_model=PurchaseListResponse)
+def list_purchases(
+    db: DBSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> PurchaseListResponse:
+    purchases = db.exec(
+        select(Purchase)
+        .where(Purchase.user_id == current_user.id)
+        .order_by(Purchase.created_at.desc())
+    ).all()
+
+    items = []
+    for p in purchases:
+        session = db.get(SessionModel, p.session_id)
+        if session is None:
+            continue
+        spot = db.get(Spot, session.spot_id)
+        items.append(
+            PurchaseRead(
+                id=p.id,
+                session_id=p.session_id,
+                amount_cents=p.amount_cents,
+                created_at=p.created_at.isoformat(),
+                session_start_time=session.start_time.isoformat(),
+                session_thumbnail_url=session.thumbnail_url,
+                spot_name=spot.name if spot else "Unknown",
+            )
+        )
+
+    return PurchaseListResponse(purchases=items)

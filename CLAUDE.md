@@ -24,6 +24,7 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 - **Do not** build custom user roles (e.g., Filmer vs. Surfer table). Use a single unified `Users` table.
 - **Do not** poll for video status. Rely strictly on Cloudflare Stream webhooks.
 - **Do not** guess strings for file update tools. Always read exact lines first, copy exact text, then replace. If edit fails, rewrite entire file.
+- **Do not** forget R2 bucket CORS policy when using browser-to-R2 presigned uploads. R2 must allow `PUT` from frontend origin AND expose `ETag` header (`ExposeHeaders: ["ETag"]`), otherwise `fetch()` fails with "Failed to fetch" or "No ETag returned".
 
 ### Workflow Directives
 - **Updating Docs:** Update the `/docs` files at the end of sessions to reflect structural changes.

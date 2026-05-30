@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import { apiFetch } from "@/lib/api";
+import type { Spot } from "@/hooks/useSpotsByBounds";
 
 // Fix default marker icon paths broken by Next.js bundler
 const DefaultIcon = L.icon({
@@ -20,18 +19,11 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-interface Spot {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  timezone: string;
-  is_approved: boolean;
-}
-
 interface SpotMapProps {
+  spots: Spot[];
   activeSpotId: string | null;
   onSpotSelect: (id: string) => void;
+  onBoundsChange: (bounds: L.LatLngBounds) => void;
 }
 
 function BoundsTracker({
@@ -57,32 +49,10 @@ function BoundsTracker({
   return null;
 }
 
-export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
+export default function SpotMap({ spots, activeSpotId, onSpotSelect, onBoundsChange }: SpotMapProps) {
   const [mounted, setMounted] = useState(false);
-  const [bounds, setBounds] = useState<L.LatLngBounds | null>(null);
 
   useEffect(() => setMounted(true), []);
-
-  const { data: spots = [] } = useQuery<Spot[]>({
-    queryKey: [
-      "spots",
-      bounds?.getSouthWest().lat,
-      bounds?.getNorthEast().lat,
-      bounds?.getSouthWest().lng,
-      bounds?.getNorthEast().lng,
-    ],
-    queryFn: () => {
-      const sw = bounds!.getSouthWest();
-      const ne = bounds!.getNorthEast();
-      return apiFetch<Spot[]>(
-        `/api/spots?min_lat=${sw.lat}&max_lat=${ne.lat}&min_lng=${sw.lng}&max_lng=${ne.lng}`,
-      );
-    },
-    enabled: bounds !== null,
-    staleTime: 30_000,
-  });
-
-  const handleBoundsChange = (b: L.LatLngBounds) => setBounds(b);
 
   if (!mounted) return null;
 
@@ -96,7 +66,7 @@ export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <BoundsTracker onBoundsChange={handleBoundsChange} />
+      <BoundsTracker onBoundsChange={onBoundsChange} />
       <MarkerClusterGroup chunkedLoading>
         {spots.map((spot) => (
           <Marker
@@ -110,8 +80,8 @@ export default function SpotMap({ activeSpotId, onSpotSelect }: SpotMapProps) {
       </MarkerClusterGroup>
       {activeSpotId && (
         <style>{`
-          .leaflet-marker-icon[title] { filter: none; }
-        `}</style>
+ .leaflet-marker-icon[title] { filter: none; }
+ `}</style>
       )}
     </MapContainer>
   );

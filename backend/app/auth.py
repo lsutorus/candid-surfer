@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel import Session
 
-from app.db import engine
+from app.deps import get_db
 from app.models import User
 
 SUPABASE_JWKS_URL = (
@@ -102,6 +102,7 @@ def _upsert_user(session: Session, user_id: uuid.UUID, email: str) -> User:
 
 def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(_bearer),
+    session: Session = Depends(get_db),
 ) -> User:
     payload = _decode_jwt(creds.credentials)
     try:
@@ -110,5 +111,4 @@ def get_current_user(
     except (KeyError, ValueError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token claims")
 
-    with Session(engine) as session:
-        return _upsert_user(session, user_id, email)
+    return _upsert_user(session, user_id, email)

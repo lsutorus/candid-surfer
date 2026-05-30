@@ -39,6 +39,7 @@ class SessionFeedRead(SQLModel):
     end_time: datetime
     price: int
     thumbnail_url: str | None
+    clip_status: str = "ready"  # uploading | uploaded | processing | ready | failed | partial
     created_at: datetime
 
 
@@ -76,3 +77,13 @@ class MultipartCompleteRequest(SQLModel):
     upload_id: str
     key: str
     parts: list[CompletedPart]
+
+
+class ClipStatusRead(SQLModel):
+    clip_id: uuid.UUID
+    status: str
+
+
+class SessionStatusResponse(SQLModel):
+    clips: list[ClipStatusRead]
+    aggregate: str  # uploading | uploaded | processing | ready | failed | partial
