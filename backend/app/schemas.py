@@ -22,6 +22,13 @@ class SessionRead(SQLModel):
     created_at: datetime
 
 
+class SpotCreate(SQLModel):
+    name: str
+    lat: float
+    lng: float
+    timezone: str
+
+
 class SpotRead(SQLModel):
     id: uuid.UUID
     name: str

@@ -25,9 +25,9 @@ Build page to create session and trigger video upload hook.
 ### Phase 2b — Stream Ingest Pipeline
 Clips upload to R2 successfully but Cloudflare Stream ingest may fail silently (background task errors not surfaced). Clips stuck in "processing" status.
 
-- [ ] Verify `trigger_cloudflare_ingest` background task succeeds (check Railway deploy logs after upload)
-- [ ] Verify Cloudflare Stream webhook (`POST /api/webhooks/cloudflare`) is reachable from Stream (check webhook URL in Stream dashboard)
-- [ ] Add logging/error recovery for failed Stream ingest background tasks
+- [x] Verify `trigger_cloudflare_ingest` background task succeeds (check Railway deploy logs after upload)
+- [x] Verify Cloudflare Stream webhook (`POST /api/webhooks/cloudflare`) is reachable from Stream (check webhook URL in Stream dashboard)
+- [x] Add logging/error recovery for failed Stream ingest background tasks
 - [ ] Confirm end-to-end flow: upload → R2 → Stream ingest → webhook → clip status "ready"
 
 ### Phase 3 — Purchase UI
@@ -42,10 +42,10 @@ Wire Stripe buy button and download manager.
 ### Phase 4 — Spot Suggestion
 Build form for user to suggest spot.
 
-- [ ] Add `POST /api/spots` endpoint (auth required, `is_approved=False` by default)
-- [ ] Build `src/components/SpotSuggestForm.tsx` (name, lat/lng picker, timezone)
-- [ ] Show "Suggest a spot" button on map view
-- [ ] Display pending spots differently from approved spots (e.g., grey marker)
+- [x] Add `POST /api/spots` endpoint (auth required, `is_approved=False` by default)
+- [x] Build `src/components/SpotSuggestForm.tsx` (name, lat/lng picker, timezone)
+- [x] Show "Suggest a spot" button on map view
+- [x] Display pending spots differently from approved spots (e.g., grey marker)
 
 ### Phase 5 — Admin
 Build page to approve spots.

@@ -11,6 +11,8 @@ export default function Map(props: {
   activeSpotId: string | null;
   onSpotSelect: (id: string) => void;
   onBoundsChange: (bounds: L.LatLngBounds) => void;
+  pickingCoords?: boolean;
+  onMapClick?: (lat: number, lng: number) => void;
 }) {
   return <SpotMap {...props} />;
 }
