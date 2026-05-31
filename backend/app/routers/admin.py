@@ -10,11 +10,15 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 @router.get("/spots", response_model=list[SpotRead])
-def list_pending_spots(
-    is_approved: bool = False,
+def list_spots_admin(
+    is_approved: bool | None = None,
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ) -> list[SpotRead]:
+    statement = select(Spot)
+    if is_approved is not None:
+        statement = statement.where(Spot.is_approved == is_approved)
+    return db.exec(statement).all()
     statement = select(Spot).where(Spot.is_approved == is_approved)
     return db.exec(statement).all()
 

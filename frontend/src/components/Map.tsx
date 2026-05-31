@@ -13,6 +13,7 @@ export default function Map(props: {
   onBoundsChange: (bounds: L.LatLngBounds) => void;
   pickingCoords?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
+  showApprovalStatus?: boolean;
 }) {
   return <SpotMap {...props} />;
 }

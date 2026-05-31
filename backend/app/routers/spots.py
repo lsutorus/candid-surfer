@@ -22,6 +22,7 @@ def list_spots(
         Spot.lat <= max_lat,
         Spot.lng >= min_lng,
         Spot.lng <= max_lng,
+        Spot.is_approved == True,  # noqa: E712 — only show approved spots publicly
     )
     return db.exec(statement).all()
 

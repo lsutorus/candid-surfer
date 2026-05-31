@@ -19,7 +19,7 @@ const DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Grey icon for unapproved spots
+// Grey icon for unapproved spots (admin map only)
 const GreyIcon = L.icon({
   iconUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
@@ -39,6 +39,8 @@ interface SpotMapProps {
   onBoundsChange: (bounds: L.LatLngBounds) => void;
   pickingCoords?: boolean;
   onMapClick?: (lat: number, lng: number) => void;
+  /** Show approved vs unapproved with different markers (admin view) */
+  showApprovalStatus?: boolean;
 }
 
 function BoundsTracker({
@@ -88,6 +90,7 @@ export default function SpotMap({
   onBoundsChange,
   pickingCoords = false,
   onMapClick,
+  showApprovalStatus = false,
 }: SpotMapProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -97,11 +100,13 @@ export default function SpotMap({
 
   return (
     <>
-      <style>{`
-        .greyscale-marker {
-          filter: grayscale(1) opacity(0.5);
-        }
-      `}</style>
+      {showApprovalStatus && (
+        <style>{`
+          .greyscale-marker {
+            filter: grayscale(1) opacity(0.5);
+          }
+        `}</style>
+      )}
       <MapContainer
         center={[33.3853, -119.5828]}
         zoom={5}
@@ -118,7 +123,7 @@ export default function SpotMap({
             <Marker
               key={spot.id}
               position={[spot.lat, spot.lng]}
-              icon={spot.is_approved ? DefaultIcon : GreyIcon}
+              icon={showApprovalStatus && !spot.is_approved ? GreyIcon : DefaultIcon}
               eventHandlers={{
                 click: () => onSpotSelect(spot.id),
               }}
