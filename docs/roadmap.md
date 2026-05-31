@@ -58,7 +58,7 @@ Build page to approve spots.
 ### Phase 6 — TTL Cron
 Build Python script to delete old clips.
 
-- [ ] Build `backend/scripts/ttl_delete.py` querying Clips where `created_at` > 30 days and `is_deleted=False`
-- [ ] Fire Cloudflare Stream API DELETE for each clip's `stream_uid`
-- [ ] Mark `is_deleted=True` on DB rows (R2 auto-deleted by bucket lifecycle rule)
+- [x] Build `backend/scripts/ttl_delete.py` querying Clips where `captured_at` > 30 days and `is_deleted=False`
+- [x] Fire Cloudflare Stream API DELETE for each clip's `stream_uid`
+- [x] Mark `is_deleted=True` on DB rows (R2 auto-deleted by bucket lifecycle rule)
 - [ ] Add Railway cron schedule to run daily
