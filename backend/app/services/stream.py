@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 
 import httpx
 from dotenv import load_dotenv
@@ -31,12 +32,38 @@ if _missing:
 log = logging.getLogger(__name__)
 
 STREAM_API_BASE = "https://api.cloudflare.com/client/v4/accounts"
+MAX_RETRIES = 1
+RETRY_BACKOFF_SECONDS = 3
 
 
-def ingest_clip_to_cloudflare(r2_raw_key: str, clip_id: str) -> tuple[str | None, str | None]:
+class IngestResult:
+    """Structured result from ingest_clip_to_cloudflare."""
+
+    __slots__ = ("stream_uid", "error", "status_code")
+
+    def __init__(
+        self,
+        stream_uid: str | None = None,
+        error: str | None = None,
+        status_code: int | None = None,
+    ):
+        self.stream_uid = stream_uid
+        self.error = error
+        self.status_code = status_code
+
+    @property
+    def ok(self) -> bool:
+        return self.error is None
+
+    @property
+    def is_5xx(self) -> bool:
+        return self.status_code is not None and 500 <= self.status_code < 600
+
+
+def ingest_clip_to_cloudflare(r2_raw_key: str, clip_id: str) -> IngestResult:
     """Call Cloudflare Stream copy API. No database interaction.
 
-    Returns (stream_uid, None) on success, or (None, error_detail) on failure.
+    Returns IngestResult with stream_uid on success, or error + status_code on failure.
     """
     presigned_url = r2_client.generate_presigned_url(
         "get_object",
@@ -55,14 +82,38 @@ def ingest_clip_to_cloudflare(r2_raw_key: str, clip_id: str) -> tuple[str | None
         resp = client.post(url, json=payload, headers=headers)
 
     if resp.status_code != 200:
-        return None, f"CF Stream copy failed: {resp.text}"
+        return IngestResult(
+            error=f"CF Stream copy failed (status={resp.status_code}): {resp.text}",
+            status_code=resp.status_code,
+        )
 
     data = resp.json()
     uid = data.get("result", {}).get("uid")
     if not uid:
-        return None, f"CF Stream response missing result.uid: {resp.text}"
+        return IngestResult(
+            error=f"CF Stream response missing result.uid: {resp.text}",
+            status_code=200,
+        )
 
-    return uid, None
+    return IngestResult(stream_uid=uid)
+
+
+def get_stuck_clips(minutes: int = 15) -> list[Clip]:
+    """Return clips stuck in 'processing' for longer than *minutes*.
+
+    These are clips where the Cloudflare Stream webhook never arrived.
+    Used by the re-ingest endpoint to identify candidates.
+    """
+    from datetime import datetime, timedelta, timezone
+    from sqlmodel import select
+
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+    with Session(engine) as db:
+        statement = select(Clip).where(
+            Clip.status == "processing",
+            Clip.updated_at < cutoff,
+        )
+        return list(db.exec(statement).all())
 
 
 def trigger_cloudflare_ingest(clip_id: str) -> None:
@@ -72,16 +123,33 @@ def trigger_cloudflare_ingest(clip_id: str) -> None:
             log.error("clip %s not found for ingest", clip_id)
             return
 
-        stream_uid, error = ingest_clip_to_cloudflare(clip.r2_raw_key, str(clip_id))
-        if error:
-            log.error("Ingest failed for clip %s: %s", clip_id, error)
+        log.info(
+            "Starting Stream ingest for clip %s (r2_raw_key=%s, current_status=%s)",
+            clip_id, clip.r2_raw_key, clip.status,
+        )
+
+        result = ingest_clip_to_cloudflare(clip.r2_raw_key, str(clip_id))
+
+        if result.is_5xx:
+            log.warning(
+                "Transient ingest error for clip %s (status=%d), retrying in %ds",
+                clip_id, result.status_code, RETRY_BACKOFF_SECONDS,
+            )
+            time.sleep(RETRY_BACKOFF_SECONDS)
+            result = ingest_clip_to_cloudflare(clip.r2_raw_key, str(clip_id))
+
+        if not result.ok:
+            log.error(
+                "Ingest failed for clip %s (r2_raw_key=%s): %s",
+                clip_id, clip.r2_raw_key, result.error,
+            )
             clip.status = "failed"
             db.add(clip)
             db.commit()
             return
 
-        clip.stream_uid = stream_uid
+        clip.stream_uid = result.stream_uid
         clip.status = "processing"
         db.add(clip)
         db.commit()
-        log.info("clip %s → stream_uid %s, status=processing", clip_id, stream_uid)
+        log.info("clip %s → stream_uid %s, status=processing", clip_id, result.stream_uid)

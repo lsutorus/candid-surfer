@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
 
 def _verify_signature(signature_header: str, body: bytes) -> bool:
     if not CF_STREAM_WEBHOOK_SECRET:
-        log.warning("CF_STREAM_WEBHOOK_SECRET not set, skipping verification")
+        log.error("CF_STREAM_WEBHOOK_SECRET not set, skipping signature verification")
         return True
 
     try:
@@ -65,6 +65,9 @@ async def cloudflare_webhook(request: Request) -> Response:
         return Response(status_code=status.HTTP_200_OK)
 
     state = cf_status.get("state", "")
+    stream_uid = payload.get("uid", "")
+
+    log.info("Stream webhook: clip_id=%s state=%s uid=%s", clip_id, state, stream_uid)
 
     with Session(engine) as db:
         clip = db.get(Clip, clip_id)
@@ -74,6 +77,8 @@ async def cloudflare_webhook(request: Request) -> Response:
 
         if state == "ready":
             clip.status = "ready"
+            if stream_uid and not clip.stream_uid:
+                clip.stream_uid = stream_uid
             db.add(clip)
 
             session = db.get(SessionModel, clip.session_id)
@@ -85,13 +90,19 @@ async def cloudflare_webhook(request: Request) -> Response:
                 db.add(session)
 
             db.commit()
-            log.info("clip %s ready", clip_id)
+            log.info("clip %s ready (uid=%s)", clip_id, clip.stream_uid)
 
         elif state == "error":
             clip.status = "failed"
             db.add(clip)
             db.commit()
-            log.info("clip %s failed", clip_id)
+            log.error("clip %s failed (uid=%s)", clip_id, stream_uid)
+
+        elif state in ("queued", "inprogress"):
+            log.info("clip %s %s, no status change", clip_id, state)
+
+        else:
+            log.warning("clip %s unexpected state=%s", clip_id, state)
 
     return Response(status_code=status.HTTP_200_OK)
 
@@ -102,7 +113,7 @@ async def stripe_webhook(request: Request) -> Response:
     sig_header = request.headers.get("Stripe-Signature", "")
 
     if not STRIPE_WEBHOOK_SECRET:
-        log.warning("STRIPE_WEBHOOK_SECRET not set, skipping verification")
+        log.error("STRIPE_WEBHOOK_SECRET not set, skipping signature verification")
         event = stripe.Event.construct_from(await request.json(), stripe.api_key)
     else:
         try:
