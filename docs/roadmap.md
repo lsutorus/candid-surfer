@@ -50,10 +50,10 @@ Build form for user to suggest spot.
 ### Phase 5 — Admin
 Build page to approve spots.
 
-- [ ] Add `GET /api/admin/spots?is_approved=false` endpoint (auth + admin check)
-- [ ] Add `PATCH /api/admin/spots/{id}` endpoint to set `is_approved=True`
-- [ ] Build `src/app/admin/page.tsx` listing pending spots with approve/reject actions
-- [ ] Add admin role check (e.g., `is_admin` column on Users or hardcoded allowlist)
+- [x] Add `GET /api/admin/spots?is_approved=false` endpoint (auth + admin check)
+- [x] Add `PATCH /api/admin/spots/{id}` endpoint to set `is_approved=True`
+- [x] Build `src/app/admin/page.tsx` listing pending spots with approve/reject actions
+- [x] Add admin role check (e.g., `is_admin` column on Users or hardcoded allowlist)
 
 ### Phase 6 — TTL Cron
 Build Python script to delete old clips.

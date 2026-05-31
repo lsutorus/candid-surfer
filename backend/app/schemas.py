@@ -38,6 +38,10 @@ class SpotRead(SQLModel):
     is_approved: bool
 
 
+class SpotApprove(SQLModel):
+    is_approved: bool
+
+
 class SessionFeedRead(SQLModel):
     id: uuid.UUID
     spot_id: uuid.UUID

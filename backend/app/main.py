@@ -8,6 +8,7 @@ from app.routers.spots import router as spots_router
 from app.routers.uploads import router as uploads_router
 from app.routers.webhooks import router as webhooks_router
 from app.routers.purchases import router as purchases_router
+from app.routers.admin import router as admin_router
 
 app = FastAPI(title="Candid Surfer", version="0.1.0")
 
@@ -24,6 +25,7 @@ app.include_router(spots_router)
 app.include_router(uploads_router)
 app.include_router(webhooks_router)
 app.include_router(purchases_router)
+app.include_router(admin_router)
 
 
 @app.get("/health")

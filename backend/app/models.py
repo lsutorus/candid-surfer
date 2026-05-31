@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Column, ForeignKey, Unicode
+from sqlalchemy import Boolean, Column, ForeignKey, Unicode
 from sqlmodel import Field, SQLModel
 
 
@@ -15,6 +15,7 @@ class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     email: str = Field(unique=True)
     stripe_account_id: str | None = Field(default=None)
+    is_admin: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default="false"))
     created_at: datetime = Field(default_factory=_now)
 
 
