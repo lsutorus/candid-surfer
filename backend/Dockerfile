@@ -5,15 +5,15 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install dependencies first (cache layer)
+# Copy everything first so setuptools can find app/ package
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
-
-# Copy application code
 COPY app/ app/
 COPY alembic/ alembic/
 COPY alembic.ini alembic.ini
 COPY scripts/ scripts/
+
+# Install dependencies (project + deps)
+RUN uv sync --no-dev
 
 EXPOSE 8000
 
