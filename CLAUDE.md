@@ -13,7 +13,7 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 - Database: Supabase PostgreSQL (accessed via Supavisor Transaction Pool URL).
 - Storage/Video: Cloudflare R2 (Raw 4K), Cloudflare Stream (HLS, watermarking, thumbnails).
 - Payments: Stripe Connect (Split payments), Stripe Hosted Checkout.
-- Infrastructure: Vercel (Frontend), Railway (Backend). Sentry (Error tracking).
+- Infrastructure: Vercel (Frontend), Railway (Backend, serverless mode). Sentry (Error tracking).
 
 ### Strict Anti-Patterns (NEVER DO THESE)
 - **Do not** process video via FFmpeg on the backend. Always use Cloudflare Stream API/Webhooks.
@@ -25,6 +25,7 @@ This document defines core rules. Review `/docs/architecture.md`, `/docs/databas
 - **Do not** poll for video status. Rely strictly on Cloudflare Stream webhooks.
 - **Do not** guess strings for file update tools. Always read exact lines first, copy exact text, then replace. If edit fails, rewrite entire file.
 - **Do not** forget R2 bucket CORS policy when using browser-to-R2 presigned uploads. R2 must allow `PUT` from frontend origin AND expose `ETag` header (`ExposeHeaders: ["ETag"]`), otherwise `fetch()` fails with "Failed to fetch" or "No ETag returned".
+- **Do not** write Alembic migrations that blindly `ADD COLUMN` without idempotency guards. Production DB state can drift from the `alembic_version` table (e.g., after a partial deploy). Always use `sqlalchemy.inspect()` to check if a column/table already exists before adding it. Otherwise `alembic upgrade head` crashes on `DuplicateColumn` and blocks all future deploys.
 
 ### Workflow Directives
 - **Updating Docs:** Update the `/docs` files at the end of sessions to reflect structural changes.

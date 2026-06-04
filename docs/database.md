@@ -6,6 +6,7 @@
 - `id`: UUID (Primary Key, matches Supabase Auth ID)
 - `email`: String (Unique)
 - `stripe_account_id`: String (Nullable, for Connect payout)
+- `is_admin`: Boolean (Default `false`, admin role for spot approval etc.)
 - `created_at`: UTC Timestamp
 
 

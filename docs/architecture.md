@@ -1,7 +1,7 @@
 ## Infrastructure Overview
 
 - **Vercel:** Hosts Next.js client (root directory `/frontend`). Active deployment. Connects to FastAPI backend via REST.
-- **Railway:** Hosts FastAPI Docker container. Active deployment at `https://[RAILWAY_DOMAIN]`. Runs web server and daily cron jobs.
+- **Railway:** Hosts FastAPI Docker container. Active deployment at `https://[RAILWAY_DOMAIN]`. Runs in **serverless mode** (scales to zero when idle, queues requests during cold start). Cron schedule disabled — serverless mode and cron are incompatible (cron prevents scale-to-zero).
 - **Supabase:** Managed PostgreSQL DB (accessed via Supavisor Transaction Pool URL, port 6543). Auth provider.
 - **Cloudflare:**
   - R2: Holds raw video uploads (multipart presigned PUT ingest, presigned GET egress). 30-day bucket lifecycle auto-delete rule.
@@ -37,7 +37,7 @@
 
 - **Framework:** FastAPI with `slowapi` rate limiting.
 - **CORS:** `CORSMiddleware` added in `app/main.py`. Origins read from `CORS_ORIGINS` env var (comma-separated), defaults to `http://localhost:3000`. `allow_credentials=True`, wildcard methods/headers. **Important:** `CORS_ORIGINS` on Railway must include the production Vercel domain, not placeholder values.
-- **ORM:** SQLModel handles both API validation schemas and DB models. Alembic handles migrations.
+- **ORM:** SQLModel handles both API validation schemas and DB models. Alembic handles migrations. **Idempotent migrations required** — use `sqlalchemy.inspect()` to guard `ADD COLUMN` / `DROP COLUMN` against production DB drift from `alembic_version` table.
 - **Auth:** `HTTPBearer` extracts Bearer token. PyJWT verifies ES256 tokens against Supabase JWKS public keys fetched from `{SUPABASE_PROJECT_REF}.supabase.co/auth/v1/.well-known/jwks.json`. Thread-safe JWKS cache with 10-min TTL + auto re-fetch on `kid` mismatch (key rotation). Checks `aud="authenticated"` and token expiry. Auto-upserts local `users` row on first verified request (id=JWT sub, email=JWT email). `get_current_user` injects the request-scoped DB session via `Depends(get_db)` — auth upsert and endpoint logic share a single transaction per request.
 - **Database:** Supabase PostgreSQL via psycopg3. `postgresql://` URLs auto-rewritten to `postgresql+psycopg://`.
 - **R2 Client:** `app/r2.py` initializes a boto3 S3 client targeting `https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com` (`region_name="auto"`). Reads `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` from env. Enforces 5 GB max file size.

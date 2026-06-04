@@ -61,4 +61,4 @@ Build Python script to delete old clips.
 - [x] Build `backend/scripts/ttl_delete.py` querying Clips where `captured_at` > 30 days and `is_deleted=False`
 - [x] Fire Cloudflare Stream API DELETE for each clip's `stream_uid`
 - [x] Mark `is_deleted=True` on DB rows (R2 auto-deleted by bucket lifecycle rule)
-- [x] Add Railway cron schedule to run daily
+- [x] ~~Add Railway cron schedule to run daily~~ Cron disabled — Railway serverless mode incompatible with cron (prevents scale-to-zero). Run `ttl_delete.py` manually or re-enable cron if serverless is turned off.
